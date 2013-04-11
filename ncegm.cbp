@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="ncegm" />
+		<Option pch_mode="2" />
+		<Option compiler="gfortran" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/dcegm" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gfortran" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/dcegm" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gfortran" />
+				<Compiler>
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-Ofast" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-std=f2003" />
+			<Add option="-ffree-line-length-none" />
+			<Add option="-W" />
+		</Compiler>
+		<Unit filename="demo.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="grids.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="kinds.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="main.f90">
+			<Option weight="4" />
+		</Unit>
+		<Unit filename="ncegm.f90">
+			<Option weight="2" />
+		</Unit>
+		<Unit filename="ndifferential.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="newton.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="normal_cdf.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="tauchen.f90">
+			<Option weight="2" />
+		</Unit>
+		<Extensions>
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
