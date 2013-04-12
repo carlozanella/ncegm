@@ -70,12 +70,17 @@ module demo
 
 
       contains
+
+        subroutine test()
+
+        end subroutine test
         subroutine start_demo()
             type(ncegm_model) m
             real(dp), dimension(3),target :: v,w ! TODO: delete these 2 variables (here only for debugging)
             integer, parameter :: glen = 11
             real(dp), dimension(glen) :: grid
             real(dp), dimension(len_a_grid, len_h_grid, len_y_grid), target   :: vfguess
+            call test()
 
             ! Setup the grids
             a_grid = build_grid(len_a_grid, min_a, max_a,2)
@@ -105,6 +110,7 @@ module demo
             m%V_initial => vfguess
             ! Finally, specify discount factor beta
             m%beta=bita
+            m%state_independent_foc=.TRUE.
 
             call ncegm_setup(m)
             call ncegm_solve()

@@ -40,6 +40,9 @@
 		<Unit filename="grids.f90">
 			<Option weight="1" />
 		</Unit>
+		<Unit filename="interpolation.f90">
+			<Option weight="1" />
+		</Unit>
 		<Unit filename="kinds.f90">
 			<Option weight="0" />
 		</Unit>
