@@ -32,7 +32,7 @@ module newton
         integer, intent(in), optional                 :: max_iter_in
 
         integer                                       :: i, max_iter
-        real(dp)                                      :: x,xn,dx,eps,minx,offset
+        real(dp)                                      :: x,xn,dx,val,eps,minx,offset
 
         eps = 10.d-08
         minx = -10.d14
@@ -45,13 +45,15 @@ module newton
 
         x=xguess
         do i=1, max_iter
-            dx = (f(x,p2,p3,p4)-offset)/df(x,p2,p3,p4)
+            val = f(x,p2,p3,p4)-offset
+            dx = val/df(x,p2,p3,p4)
             xn = x - dx
-            if (abs(dx) <= eps .AND. xn > minx) then
+            if (xn <= minx) xn=minx+0.01_dp
+!            if (abs(dx) <= eps .AND. xn > minx) then
+            if (abs(dx) <= 1.d-8*(1+abs(xn)) .AND. abs(val)<=1.d-8) then
                 root4p = xn
                 return
             end if
-            if (xn <= minx) xn=minx+0.01_dp
             x = xn
         end do
         print *, "Could not find root within ",max_iter," iterations.x=", x,"guess=",xguess
@@ -66,7 +68,7 @@ module newton
         integer, intent(in), optional                 :: max_iter_in
 
         integer                                       :: i, max_iter
-        real(dp)                                      :: x,xn,dx,eps,minx,offset
+        real(dp)                                      :: x,xn,dx,val,eps,minx,offset
 
         eps = 10.d-08
         minx = -10.d14
@@ -79,13 +81,15 @@ module newton
 
         x=xguess
         do i=1, max_iter
-            dx = (f(x,p2,p3,p4,p5)-offset)/df(x,p2,p3,p4,p5)
+            val = f(x,p2,p3,p4,p5)-offset
+            dx = val/df(x,p2,p3,p4,p5)
             xn = x - dx
-            if (abs(dx) <= eps .AND. xn > minx) then
+            if (xn <= minx) xn=minx+0.01_dp
+!            if (abs(dx) <= eps .AND. xn > minx) then
+            if (abs(dx) <= 1.d-8*(1+abs(xn)) .AND. abs(val)<=1.d-8) then
                 root5p = xn
                 return
             end if
-            if (xn <= minx) xn=minx+0.01_dp
             x = xn
         end do
         print *, "Could not find root within ",max_iter," iterations."

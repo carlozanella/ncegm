@@ -6,81 +6,59 @@ module demo
     use ndifferential, only: lindiff
     implicit none
     private
-    public :: start_demo
+    save
+    public :: start_demo_fella2011
 
+    ! ---------------------------------------------------------------------
+    ! Parameters for model Fella (2011)
+    ! ---------------------------------------------------------------------
 
+    integer, parameter      :: len_a_grid = 400   ! asset grid size
+    real (dp), parameter    :: theta= .77d0! non-durables weight
+    real (dp), parameter    :: tau  = 0.d0!.2435d0! intratemporal elast.
+    real (dp), parameter    :: kappa  = .075d0! flow of house servic.
+    real (dp), parameter    :: bita= 0.93d0! discount factor
 
-  !*********************************************************************
-    ! Fella global variables
-    !*********************************************************************
+    ! ar(1) parameters for persistent income shock yp
+    ! unconditional mean mu0 normalized to 1
+    real (dp), parameter    :: rho_yp = .977d0
+    real (dp), parameter    :: mu0_yp = 0.d0
+    real (dp), parameter    :: sigma_yp = .024d0
 
-      INTEGER, PARAMETER   :: len_a_grid = 400   ! Asset grid size
-      !----------------------------------------------------------------
-      ! 1. Economic parameter (model period: half quarter)
-      !----------------------------------------------------------------
+    ! ar(1) parameters for temporary income shock yt
+    real (dp), parameter    :: rho_yt= .0d0
+    real (dp), parameter    :: mu0_yt = .0d0
+    real (dp), parameter    :: sigma_yt = .063d0
 
-      REAL (dp), PARAMETER :: theta= .77d0! Non-durables weight
-      REAL (dp), PARAMETER :: tau  = 0.d0!.2435d0! Intratemporal elast.
-      REAL (dp), PARAMETER :: kappa  = .075d0! Flow of house servic.
-      REAL (dp), PARAMETER :: bita= 0.93d0! Discount factor
+    real (dp), parameter    :: min_a= 0.d0! lower bound on assets
+    real (dp), parameter    :: max_a= 25.d0 ! upper bound on assets
+    real (dp), parameter    :: min_h= 1.d-2! lower bound on housing size
+    real (dp), parameter    :: max_h = 10.0  !upper bound on housing
+    real (dp), parameter    :: downp= .2d0! downpayment ratio
+    real (dp), parameter    :: gamma_= .06d0! percentage transaction cost
 
-      ! AR(1) parameters for persistent income shock yp
-      ! Unconditional mean mu0 normalized to 1
-      REAL (dp), PARAMETER :: rho_yp = .977d0
-      REAL (dp), PARAMETER :: mu0_yp = 0.d0
-      REAL (dp), PARAMETER :: sigma_yp = .024d0
+    integer, parameter      :: len_yp_grid = 7  ! persistent shock grid size
+    real(dp), parameter     :: cover_yp = 3.d0  ! cover 3 sd each side
 
-      ! AR(1) parameters for temporary income shock yt
-      REAL (dp), PARAMETER :: rho_yt= .0d0
-      REAL (dp), PARAMETER :: mu0_yt = .0d0
-      REAL (dp), PARAMETER :: sigma_yt = .063d0
+    integer, parameter      :: len_yt_grid = 7   ! persistent shock grid size
+    real(dp), parameter     :: cover_yt = 3.d0  ! cover 3 sd each side
 
-      REAL (dp), PARAMETER :: min_a= 0.d0! Lower bound on assets
-      REAL (dp), PARAMETER :: max_a= 25.d0 ! Upper bound on assets
-      REAL (dp), PARAMETER :: min_h= 1.d-2! Lower bound on housing size
-      REAL (dp), PARAMETER :: max_h = 10.0  !Upper bound on housing
-      REAL (dp), PARAMETER :: downp= .2d0! Downpayment ratio
-      REAL (dp), PARAMETER :: gamma_= .06d0! Percentage transaction cost
+    integer, parameter      :: len_h_grid = 7  ! number of housing choices
 
+    ! income grid
+    integer, parameter      :: len_y_grid = len_yp_grid*len_yt_grid
 
-      !----------------------------------------------------------------
-      ! 2. Numerical parameters
-      !----------------------------------------------------------------
+    ! Grids
+    real(dp), dimension(len_a_grid)                       :: a_grid
+    real(dp), dimension(len_h_grid)                       :: sd_grid
+    real(dp), dimension(len_y_grid)                       :: z_grid
+    real(dp), dimension(len_y_grid,len_y_grid)            :: z_transition
 
-      INTEGER, PARAMETER :: len_yp_grid = 7  ! Persistent shock grid size
-      REAL(dp), PARAMETER :: cover_yp = 3.d0  ! Cover 3 SD each side
+    contains
 
-      INTEGER, PARAMETER :: len_yt_grid = 7   ! Persistent shock grid size
-      REAL(dp), PARAMETER :: cover_yt = 3.d0  ! Cover 3 SD each side
-
-      INTEGER, PARAMETER :: len_h_grid = 7  ! Number of housing choices
-
-      REAL (dp), PARAMETER :: toler   = 1d-5  ! Numerical tolerance
-      integer :: Tsimul    = 50000 ! Number of simulations for Euler errors
-
-      ! Income grid
-      INTEGER, PARAMETER :: len_y_grid = len_yp_grid*len_yt_grid
-
-
-      ! Grids
-      real(dp), dimension(len_a_grid), target               :: a_grid
-      real(dp), dimension(len_h_grid), target               :: sd_grid
-      real(dp), dimension(len_y_grid), target               :: z_grid
-      real(dp), dimension(len_y_grid,len_y_grid), target    :: z_transition
-
-
-      contains
-
-        subroutine test()
-
-        end subroutine test
-        subroutine start_demo()
-            type(ncegm_model) m
-            real(dp), dimension(3),target :: v,w ! TODO: delete these 2 variables (here only for debugging)
-            integer, parameter :: glen = 11
-            real(dp), dimension(glen) :: grid
+        subroutine start_demo_fella2011()
+            type(ncegm_model) :: m
             real(dp), dimension(len_a_grid, len_h_grid, len_y_grid), target   :: vfguess
-            call test()
 
             ! Setup the grids
             a_grid = build_grid(len_a_grid, min_a, max_a,2)
@@ -90,24 +68,29 @@ module demo
             ! Compute an initial guess for the value function
             vfguess = vfinitialguess()
 
+            ! Allocate various grids and arrays of the model
+            allocate(m%a_grid(len_a_grid),m%d_grid(len_h_grid),m%s_grid(len_h_grid),m%z_grid(len_y_grid))
+            allocate(m%V_initial(len_a_grid,len_h_grid,len_y_grid))
+            allocate(m%z_transition(len_y_grid,len_y_grid))
+
             ! Specify return function and derivatives
             m%F=>F
             m%dF=>dF
             m%d2F=>d2F
-            ! Specify budget constraint Gamma and its derivative (optional, though)
+            ! Specify budget constraint Gamma and, optionally, its derivative
             m%Gamma => Gamma
             m%dGamma => dGamma
             ! Specify transition function for state variable s
             m%Psi=>Psi
             ! Specify Markov matrix for the transition of the stochastic variable z
-            m%z_transition=>z_transition
+            m%z_transition=z_transition
             ! Specify the grids for A, D, S and Z
-            m%a_grid=>a_grid
-            m%d_grid=>sd_grid
-            m%s_grid=>sd_grid
-            m%z_grid=>z_grid
+            m%a_grid=a_grid
+            m%d_grid=sd_grid
+            m%s_grid=sd_grid
+            m%z_grid=z_grid
             ! Specify an initial guess for the value function
-            m%V_initial => vfguess
+            m%V_initial=vfguess
             ! Finally, specify discount factor beta
             m%beta=bita
             m%state_independent_foc=.TRUE.
@@ -115,10 +98,11 @@ module demo
             call ncegm_setup(m)
             call ncegm_solve()
 
-        end subroutine start_demo
+        end subroutine start_demo_fella2011
+
+
 
         ! Helper functions to set up the model
-
         subroutine fella_create_zgrid_and_transition(zgrid, transition_matrix)
             real(dp), dimension(len_y_grid), intent(out)             :: zgrid
             real(dp), dimension(len_y_grid,len_y_grid), intent(out)  :: transition_matrix
@@ -170,7 +154,7 @@ module demo
         end function
 
 
-        ! Functionals for the EGM algorithm
+        ! Functions for the EGM algorithm
 
         function F(c,d,s,z)
             real(dp), dimension(:), intent(in)  :: c
@@ -217,7 +201,7 @@ module demo
             real(dp), intent(in)               :: d,s,z
             real(dp), dimension(size(a))       :: dGamma
             real(dp)                           :: trans_cost
-            dGamma = (1.d0+6.d-2)*a
+            dGamma = 1.d0+6.d-2
         end function dGamma
 
         function Psi(s_index,d_index,z_index)

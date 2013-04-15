@@ -16,7 +16,7 @@ module grids
             if (present(expg_in)) then
                 expg = expg_in
             else
-                expg = 0.0_dp
+                expg = 0
             end if
 
             v1 = min

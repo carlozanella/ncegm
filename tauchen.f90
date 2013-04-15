@@ -24,7 +24,7 @@ module tauchen
             real(dp), dimension (n,n), intent(out) :: pi , picum
             real(dp), dimension (n), intent(out) :: y
 
-            integer :: yc, tc, tcc, i1
+            integer :: yc, tc, tcc
 
             real(dp) :: sigy, mu, upp, low
 
