@@ -12,6 +12,13 @@
 				<Option type="1" />
 				<Option compiler="gfortran" />
 				<Compiler>
+					<Add option="-W" />
+					<Add option="-fcheck=recursion" />
+					<Add option="-fcheck=pointer" />
+					<Add option="-fcheck=mem" />
+					<Add option="-fcheck=do" />
+					<Add option="-fcheck=array-temps" />
+					<Add option="-fcheck=all" />
 					<Add option="-g" />
 				</Compiler>
 			</Target>
@@ -34,7 +41,10 @@
 			<Add option="-ffree-line-length-none" />
 			<Add option="-W" />
 		</Compiler>
-		<Unit filename="demo.f90">
+		<Unit filename="demo_binary_labour_choice.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="demo_fella11.f90">
 			<Option weight="3" />
 		</Unit>
 		<Unit filename="grids.f90">

@@ -55,12 +55,12 @@ module ncegm
         procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                      ! OPTIONAL: inverse of marginal return function Fc'
         procedure(BudgetConstraint), pointer, nopass                 :: Gamma=>null()                       ! REQUIRED: budget constraint
         procedure(BudgetConstraint), pointer, nopass                 :: dGamma=>null()                      ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
-        procedure(StateTransition), pointer, nopass                  :: Psi=>null()                         ! REQUIRED: Transition function from s_t to s{t+1}
+        procedure(StateTransition), pointer, nopass                  :: Psi=>null()                         ! REQUIRED if s is used: Transition function from s_t to s{t+1}
         real(dp), dimension(:,:,:), allocatable                      :: V_initial                           ! REQUIRED: initial guess of the value function
-        real(dp), dimension(:), allocatable                          :: a_grid,s_grid,&                     ! REQUIRED: grids for A, D, S and Z
-                                                                        z_grid,d_grid
+        real(dp), dimension(:), allocatable                          :: a_grid,d_grid,&                     ! REQUIRED: grids for A, D
+                                                                        s_grid,z_grid                       ! REQUIRED if s or z, respectively, is used.
         real(dp)                                                     :: beta=0                              ! REQUIRED: discount factor Beta in interval (0,1)
-        real(dp), dimension(:,:), allocatable                        :: z_transition                        ! REQUIRED: transition matrix for random variable z
+        real(dp), dimension(:,:), allocatable                        :: z_transition                        ! REQUIRED if z is used: transition matrix for random variable z
         logical                                                      :: state_independent_foc = .FALSE.     ! OPTIONAL: is the first-order condition independent of the state variable? If set to .TRUE., then some optimizations are performed.
     end type ncegm_model
 
@@ -89,8 +89,20 @@ module ncegm
 
 
 
-            ! Store model and grid sizes
+            ! Store model and create dummy grids if Z and S are not used
             model = dpmodel
+            if (.NOT. allocated(model%s_grid)) then
+                allocate(model%s_grid(1))
+                model%s_grid=0.0_dp
+                model%state_independent_foc = .TRUE.
+            end if
+            if (.NOT. allocated(model%z_grid)) then
+                allocate(model%z_grid(1),model%z_transition(1,1))
+                model%z_grid=0.0_dp
+                model%z_transition=1.0_dp
+            end if
+
+            ! Compute grid sizes
             glen_a = size(model%a_grid)
             glen_s = size(model%s_grid)
             glen_z = size(model%z_grid)
@@ -152,6 +164,7 @@ module ncegm
             integer                                          :: index_a,index_d,index_s,index_z,index_s_prime,iter
             real(dp), dimension(glen_a,glen_s,glen_z)        :: valuef_next,dvaluef,dvaluef_next,exp_valuef,exp_dvaluef
             real(dp), dimension(glen_a,glen_d,glen_s,glen_z) :: policy_c_con, policy_a_prime_con, valuef_next_con
+            integer, dimension(glen_a,glen_s,glen_z)         :: d_index_choice
             real(dp)                                         :: sup_norm_diff
             real(dp), dimension(glen_a)                      :: m_end, c_end, valuef_end
             integer                                          :: k,d_max
@@ -192,7 +205,11 @@ module ncegm
                         d=model%d_grid(index_d)
                         ! In case the FOCs are state-independent, s' can be computed by Psi without knowing the current state s
                         if (model%state_independent_foc) then
-                            index_s_prime = model%Psi(NO_STATE,index_d,index_z)
+                            if (associated(model%Psi)) then
+                                index_s_prime = model%Psi(NO_STATE,index_d,index_z)
+                            else
+                                index_s_prime = 1 ! Case: no state variable is used --> dummy index
+                            end if
                             call egm_maximize(exp_valuef(:,index_s_prime,index_z),exp_dvaluef(:,index_s_prime,index_z),d,0.0_dp,z,m_end,c_end,valuef_end,k)
                         end if
 
@@ -200,7 +217,11 @@ module ncegm
                             s=model%s_grid(index_s)
                             ! The FOC depend on the state; therefore, it has to be evaluated for every state
                             if (.NOT.model%state_independent_foc) then
-                                index_s_prime = model%Psi(index_s,index_d,index_z)
+                                if (associated(model%Psi)) then
+                                    index_s_prime = model%Psi(index_s,index_d,index_z)
+                                else
+                                    index_s_prime = 1
+                                end if
                                 call egm_maximize(exp_valuef(:,index_s_prime,index_z),exp_dvaluef(:,index_s_prime,index_z),d,s,z,m_end,c_end,valuef_end,k)
                             end if
 
@@ -218,7 +239,7 @@ module ncegm
                         s = model%s_grid(index_s)
                         do index_a=1,glen_a
                             d_max = maxloc(valuef_next_con(index_a,:,index_s,index_z),1)
-                            !d_max=3
+                            d_index_choice(index_a,index_s,index_z) = d_max
                             d = model%d_grid(d_max)
                             valuef_next(index_a,index_s,index_z) = valuef_next_con(index_a,d_max,index_s,index_z)
                             if (associated(model%dGamma)) then
@@ -242,7 +263,7 @@ module ncegm
                 if (sup_norm_diff < epsilon) exit
 
                 ! 7. In case the value functions have not converged yet, print a status
-                if (mod(iter,50)==0) then
+                if (mod(iter,25)==0) then
                     call cpu_time(t2)
                     print '("Iteration #",I5," sup norm distance = ",E14.6," time=",F10.3,"s")',iter,sup_norm_diff,(t2-t1)
                     t1 = t2
@@ -253,7 +274,16 @@ module ncegm
                 print *, "Error: Value functions did not converge within ",max_iter, "iterations."
             else
                 print *, "Sufficient convergence achieved in final iteration", iter, "with supremum norm distance of", sup_norm_diff
-                ! TODO: compute unconditional value function
+                ! Compute unconditional policy functions
+                do index_z=1,glen_z
+                    do index_s=1,glen_s
+                        do index_a=1,glen_a
+                            d_max = d_index_choice(index_a,index_s,index_z)
+                            policy_c(index_a,index_s,index_z) = policy_c_con(index_a,d_max,index_s,index_z)
+                            policy_d=model%d_grid(d_max)
+                        end do
+                    end do
+                end do
             end if
 
         end subroutine
@@ -307,7 +337,7 @@ module ncegm
                     if (associated(model%dF_inv)) then
                         c_star = model%dF_inv(exp_dvaluef(index_a_prime),d,s,z)
                     else
-                        c_star = root(dF_sc,d2F_sc,xguess,p2=d,p3=s,p4=z,offset_in = exp_dvaluef(index_a_prime))
+                        c_star = root(dF_sc,d2F_sc,xguess,p2=d,p3=s,p4=z,offset_in = exp_dvaluef(index_a_prime), minx_in = 0.0_dp)
                     end if
                     k = k+1
                     c_end(k) = c_star
@@ -328,7 +358,7 @@ module ncegm
                     if (associated(model%dF_inv)) then
                         c_star = model%dF_inv(exp_dvaluef(index_a_prime),d,s,z)
                     else
-                        c_star = root(dF_sc,d2F_sc,xguess,p2=d,p3=s,p4=z,offset_in = exp_dvaluef(index_a_prime))
+                        c_star = root(dF_sc,d2F_sc,xguess,p2=d,p3=s,p4=z,offset_in = exp_dvaluef(index_a_prime), minx_in = 0.0_dp)
                     end if
 
                     z_temp = c_star + model%a_grid(index_a_prime)
@@ -481,13 +511,13 @@ module ncegm
                 write (error_unit,*) "Invalid model: The return function and first and second derivatives with respect to c must be provided."
             elseif (.NOT. associated(m%Gamma)) then
                 write (error_unit,*) "Invalid model: The budget constraint function Gamma must be provided"
-            elseif (.NOT. associated(m%Psi)) then
-                write (error_unit,*) "Invalid model: The state variable transition function Psi must be provided"
-            elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%s_grid) .AND. allocated(m%z_grid) .AND. allocated(m%d_grid))) then
-                write (error_unit,*) "Invalid model: The grids for A, S,Z and D must be provided."
-            elseif (.NOT. allocated(m%z_transition)) then
-                write (error_unit,*) "Invalid model: Missing transition matrix for random variable z"
-             elseif (.NOT. allocated(m%V_initial)) then
+            elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%d_grid))) then
+                write (error_unit,*) "Invalid model: The grids for A and D must be provided."
+            else if (allocated(m%s_grid) .NEQV. associated(m%Psi)) then
+                write (error_unit,*) "Invalid model: If the state variable s is used, s_grid and the transition function Psi must be provided."
+            else if (allocated(m%z_grid) .NEQV. allocated(m%z_transition)) then
+                write (error_unit,*) "Invalid model: If the stochastic state variable z is used, z_grid and the transition matrix must be provided."
+            elseif (.NOT. allocated(m%V_initial)) then
                 write (error_unit,*) "Invalid model: Missing initial guess for value function.s"
             elseif (m%beta<=0 .OR. m%beta>=1) then
                 write (error_unit,*) "Invalid model: Discount factor Beta must be in interval (0,1)"

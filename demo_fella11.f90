@@ -1,4 +1,4 @@
-module demo
+module demo_fella11
     use kinds, only: dp
     use ncegm, only: ncegm_model,ncegm_setup,ncegm_solve
     use grids, only: build_grid
@@ -210,4 +210,4 @@ module demo
             Psi = d_index ! new state is equal to current period's discrete choice d
         end function
 
-end module demo
+end module demo_fella11

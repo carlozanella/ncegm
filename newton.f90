@@ -48,7 +48,7 @@ module newton
             val = f(x,p2,p3,p4)-offset
             dx = val/df(x,p2,p3,p4)
             xn = x - dx
-            if (xn <= minx) xn=minx+0.01_dp
+            if (xn <= minx) xn=minx+0.000000001_dp
 !            if (abs(dx) <= eps .AND. xn > minx) then
             if (abs(dx) <= 1.d-8*(1+abs(xn)) .AND. abs(val)<=1.d-8) then
                 root4p = xn
@@ -56,7 +56,7 @@ module newton
             end if
             x = xn
         end do
-        print *, "Could not find root within ",max_iter," iterations.x=", x,"guess=",xguess
+        print *, "Could not find root within ",max_iter," iterations."
         stop
 
     end function root4p
@@ -84,7 +84,7 @@ module newton
             val = f(x,p2,p3,p4,p5)-offset
             dx = val/df(x,p2,p3,p4,p5)
             xn = x - dx
-            if (xn <= minx) xn=minx+0.01_dp
+            if (xn <= minx) xn=minx+0.000000001_dp
 !            if (abs(dx) <= eps .AND. xn > minx) then
             if (abs(dx) <= 1.d-8*(1+abs(xn)) .AND. abs(val)<=1.d-8) then
                 root5p = xn
