@@ -7,9 +7,13 @@ module ncegm
     implicit none
     private
     public :: ncegm_setup,ncegm_model,ncegm_solve
+    public :: ncegm_getPolicy_c,ncegm_getPolicy_aprime,ncegm_getPolicy_d,ncegm_getValueFunction
+    public :: ncegm_getConditionalPolicy_c,ncegm_getConditionalPolicy_aprime,ncegm_getConditionalValueFunction
     save
 
-    ! Type and interface declarations
+    ! *******************************************************************************************************
+    ! ** Types and interfaces
+    ! *******************************************************************************************************
     interface
         function ReturnFunction(c,d,s,z) result(r)
             use kinds, only: dp
@@ -51,6 +55,7 @@ module ncegm
 
 
     type ncegm_model
+        integer                                                      :: a_grid_length
         procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null(),d2F=>null()    ! REQUIRED: return function F and first- and second derivatives with respect to c Fc and Fcc
         procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                      ! OPTIONAL: inverse of marginal return function Fc'
         procedure(BudgetConstraint), pointer, nopass                 :: Gamma=>null()                       ! REQUIRED: budget constraint
@@ -64,32 +69,54 @@ module ncegm
         logical                                                      :: state_independent_foc = .FALSE.     ! OPTIONAL: is the first-order condition independent of the state variable? If set to .TRUE., then some optimizations are performed.
     end type ncegm_model
 
-    ! Module constants
-    integer, parameter                        :: MAX_ITER_DEFAULT = 10000       ! Default value for maximum amount of iterations
-    real(dp), parameter                       :: EPSILON_DEFAULT = 0.00001_dp   ! Default value for convergence criterion epsilon
-    integer, parameter                        :: NO_STATE = -10   ! Default value for convergence criterion epsilon
+    ! *******************************************************************************************************
+    ! ** Module constants
+    ! *******************************************************************************************************
+
+    integer, parameter                        :: MAX_ITER_DEFAULT = 10000               ! Default value for maximum amount of iterations
+    real(dp), parameter                       :: EPSILON_DEFAULT = 0.00001_dp           ! Default value for convergence criterion epsilon
+    integer, parameter                        :: STATUS_PRINT_INTERVAL_DEFAULT = 25     ! Print a status message every STATUS_PRINT_INTERVAL iteration. This is the default value.
+    integer, parameter                        :: NO_STATE = -10
 
 
-    ! Private module variables
+    ! *******************************************************************************************************
+    ! ** Private model variables
+    ! *******************************************************************************************************
     type(ncegm_model)                         :: model
     logical                                   :: is_setup = .FALSE., is_solved = .FALSE.
-    real(dp), dimension(:,:,:), allocatable   :: valuef, policy_c, policy_d
+    real(dp), dimension(:,:,:), allocatable   :: valuef, policy_c, policy_aprime, policy_d
+    real(dp), dimension(:,:,:,:), allocatable :: policy_c_con, policy_aprime_con, valuef_next_con
     real(dp), dimension(:,:,:,:), allocatable :: m_grid
     integer                                   :: glen_a,glen_s,glen_z,glen_d
-    integer                                   :: max_iter
+    integer                                   :: max_iter,info_message_inverval
     real(dp)                                  :: epsilon
 
     contains
-        ! Public module functions to set up the model
-        subroutine ncegm_setup(dpmodel)
+
+        ! *******************************************************************************************************
+        ! ** Public subroutines to setup and solve the model
+        ! *******************************************************************************************************
+
+        ! **
+        ! * Sets up and validates the input model. Note: this subroutine does not solve the model.
+        ! * A further call to ncegm_solve is necessary to solve the model.
+        ! *
+        ! * Input:
+        ! *     - dpmodel: the model to be solved
+        ! *
+        ! * Output:
+        ! *     - status: a flag indicating if the model is setup properly. .FALSE. indicates that the model is invalid or the arrays could not be allocated.
+        ! *
+        ! **
+        subroutine ncegm_setup(dpmodel, status)
             type(ncegm_model), intent(in) :: dpmodel
-            ! TODO: check if model is valid
+            logical, intent(out)          :: status
+
+            status = .FALSE.
+            ! Check if input model is valid
             if (.NOT. validate_model(dpmodel)) return
 
-
-
-
-            ! Store model and create dummy grids if Z and S are not used
+            ! Store model and create dummy grids if Z or S are not used
             model = dpmodel
             if (.NOT. allocated(model%s_grid)) then
                 allocate(model%s_grid(1))
@@ -107,16 +134,35 @@ module ncegm
             glen_s = size(model%s_grid)
             glen_z = size(model%z_grid)
             glen_d = size(model%d_grid)
+
             ! (Re)allocate all arrays
-            if (allocated(valuef)) deallocate(valuef, policy_c, policy_d, m_grid)
-            allocate(valuef(glen_a,glen_s,glen_z), policy_c(glen_a,glen_s,glen_z), policy_d(glen_a,glen_s,glen_z), m_grid(glen_a,glen_d,glen_s,glen_z))
+            if (allocated(valuef)) deallocate(valuef, policy_c, policy_aprime, policy_d, m_grid,policy_c_con, policy_aprime_con, valuef_next_con)
+            allocate(valuef(glen_a,glen_s,glen_z), policy_c(glen_a,glen_s,glen_z), policy_aprime(glen_a,glen_s,glen_z), policy_d(glen_a,glen_s,glen_z), m_grid(glen_a,glen_d,glen_s,glen_z))
+            allocate(policy_c_con(glen_a,glen_d,glen_s,glen_z), policy_aprime_con(glen_a,glen_d,glen_s,glen_z), valuef_next_con(glen_a,glen_d,glen_s,glen_z))
+
+            ! Ready to solve model
             is_setup = .TRUE.
+            status = .TRUE.
             is_solved = .FALSE.
         end subroutine ncegm_setup
 
-        subroutine ncegm_solve(max_iter_in, epsilon_in)
-            integer, intent(in), optional          :: max_iter_in
+        ! **
+        ! * Starts the solution algorithm of the model set up by a previous call to ncegm_setup(). The algorithm terminates if a sufficient convergence is achieved
+        ! * or if the maximum number of iterations is achieved. The input parameters allow to change parameters of the algorithm. The output parameter status can be used
+        ! * to check if the value functions converged. All parameters are optional.
+        ! *
+        ! * Input:
+        ! *     - max_iter_in (optional): The maximum number of value function iterations. If the value functions have not converged, the algorithm will stop after max_iter_in iterations.
+        ! *     - epsilon_in (optional): The supremum norm of the difference of two subsequent value functions below which the convergence is deemed sufficient and the algorithm is stopped.
+        ! *     - info_message_interval_in (optional): This value specifys the amount of iterations after which a status is printed to the output showing the current convergence.
+        ! *
+        ! * Output:
+        ! *     - status (optional): a flag indicating if the value functions have converged
+        ! **
+        subroutine ncegm_solve(max_iter_in, epsilon_in, info_message_inverval_in, status)
+            integer, intent(in), optional          :: max_iter_in,info_message_inverval_in
             real(dp), intent(in), optional         :: epsilon_in
+            logical, intent(out), optional         :: status
 
             if (.NOT.is_setup) return
 
@@ -134,45 +180,33 @@ module ncegm
                 epsilon = EPSILON_DEFAULT
             end if
 
+            if (present(info_message_inverval_in)) then
+                info_message_inverval = info_message_inverval_in
+            else
+                info_message_inverval = STATUS_PRINT_INTERVAL_DEFAULT
+            end if
+
             ! Now solve the model
-            call valfniteration
-            is_solved = .TRUE.
+            call valfniteration(is_solved)
+            if (present(status)) status = is_solved
+
         end subroutine ncegm_solve
 
-        ! Public module getter methods
-        function ncegm_getPolicy_d() result(d)
-            real(dp), dimension(glen_a,glen_s,glen_z) :: d
-            call requireSolved
-            d = policy_d
-        end function
+        ! *******************************************************************************************************
+        ! ** EGM core subroutines
+        ! *******************************************************************************************************
 
-        function ncegm_getPolicy_c() result(c)
-            real(dp), dimension(glen_a,glen_s,glen_z) :: c
-            call requireSolved
-            c = policy_c
-        end function
-
-        function ncegm_getValueFunction() result(v)
-            real(dp), dimension(glen_a,glen_s,glen_z) :: v
-            call requireSolved
-            v = valuef
-        end function
-
-        ! EGM algorithm functions
-
-        subroutine valfniteration()
+        subroutine valfniteration(status)
             integer                                          :: index_a,index_d,index_s,index_z,index_s_prime,iter
             real(dp), dimension(glen_a,glen_s,glen_z)        :: valuef_next,dvaluef,dvaluef_next,exp_valuef,exp_dvaluef
-            real(dp), dimension(glen_a,glen_d,glen_s,glen_z) :: policy_c_con, policy_a_prime_con, valuef_next_con
             integer, dimension(glen_a,glen_s,glen_z)         :: d_index_choice
             real(dp)                                         :: sup_norm_diff
             real(dp), dimension(glen_a)                      :: m_end, c_end, valuef_end
-            integer                                          :: k,d_max
-            real(dp)                                         :: d,s,z,t1,t2
+            integer                                          :: k,d_max,i1
+            real(dp)                                         :: d,s,z,c,t1,t2
+            logical, intent(out)                             :: status
 
-            ! TODO: set and handle policy_a_prime_con
-
-            ! 1. Compute derivative of the initial value function and m-grid
+            ! 1. Compute derivative of the initial value function and the m-grid
             valuef = model%V_initial
 
             do index_z=1, glen_z
@@ -211,11 +245,12 @@ module ncegm
                                 index_s_prime = 1 ! Case: no state variable is used --> dummy index
                             end if
                             call egm_maximize(exp_valuef(:,index_s_prime,index_z),exp_dvaluef(:,index_s_prime,index_z),d,0.0_dp,z,m_end,c_end,valuef_end,k)
+
                         end if
 
                         do index_s=1,glen_s
                             s=model%s_grid(index_s)
-                            ! The FOC depend on the state; therefore, it has to be evaluated for every state
+                            ! The FOC depends on the state; therefore, it has to be evaluated for every state
                             if (.NOT.model%state_independent_foc) then
                                 if (associated(model%Psi)) then
                                     index_s_prime = model%Psi(index_s,index_d,index_z)
@@ -227,7 +262,8 @@ module ncegm
 
                             ! 4. Interpolate the value function, for all (d,s,z)
                             call egm_interpolate(d,s,z,m_grid(:,index_d,index_s,index_z),m_end(1:k),c_end(1:k),valuef_end(1:k),valuef_next_con(:,index_d,index_s,index_z),policy_c_con(:,index_d,index_s,index_z))
-                            policy_a_prime_con(:,index_d,index_s,index_z) = m_grid(:,index_d,index_s,index_z) - policy_c_con(:,index_d,index_s,index_z)
+
+                            policy_aprime_con(:,index_d,index_s,index_z) = m_grid(:,index_d,index_s,index_z) - policy_c_con(:,index_d,index_s,index_z)
                         end do
                     end do
                 end do
@@ -243,7 +279,8 @@ module ncegm
                             d = model%d_grid(d_max)
                             valuef_next(index_a,index_s,index_z) = valuef_next_con(index_a,d_max,index_s,index_z)
                             if (associated(model%dGamma)) then
-                                dvaluef_next(index_a,index_s,index_z) = dGamma_sc(model%a_grid(index_a),model%d_grid(d_max),model%s_grid(index_s),model%z_grid(index_z))*dF(policy_c_con(index_a,d_max,index_s,index_z),d,s,z)
+                                c = policy_c_con(index_a,d_max,index_s,index_z)
+                                dvaluef_next(index_a,index_s,index_z) = dGamma_sc(model%a_grid(index_a),model%d_grid(d_max),model%s_grid(index_s),model%z_grid(index_z))*dF(c,d,s,z)
                             end if
                         end do
                         if (.NOT. associated(model%dGamma)) then
@@ -263,15 +300,16 @@ module ncegm
                 if (sup_norm_diff < epsilon) exit
 
                 ! 7. In case the value functions have not converged yet, print a status
-                if (mod(iter,25)==0) then
+                if (mod(iter,info_message_inverval)==0) then
                     call cpu_time(t2)
                     print '("Iteration #",I5," sup norm distance = ",E14.6," time=",F10.3,"s")',iter,sup_norm_diff,(t2-t1)
                     t1 = t2
                 end if
             end do
 
-            if (iter==max_iter) then
+            if (iter==max_iter+1) then
                 print *, "Error: Value functions did not converge within ",max_iter, "iterations."
+                status = .FALSE.
             else
                 print *, "Sufficient convergence achieved in final iteration", iter, "with supremum norm distance of", sup_norm_diff
                 ! Compute unconditional policy functions
@@ -280,10 +318,12 @@ module ncegm
                         do index_a=1,glen_a
                             d_max = d_index_choice(index_a,index_s,index_z)
                             policy_c(index_a,index_s,index_z) = policy_c_con(index_a,d_max,index_s,index_z)
-                            policy_d=model%d_grid(d_max)
+                            policy_aprime(index_a,index_s,index_z) = m_grid(index_a,d_max,index_s,index_z) - policy_c(index_a,index_s,index_z)
+                            policy_d(index_a,index_s,index_z)=model%d_grid(d_max)
                         end do
                     end do
                 end do
+                status = .TRUE.
             end if
 
         end subroutine
@@ -409,6 +449,7 @@ module ncegm
             real(dp), dimension(glen_a), intent(out)  :: interpol_valuef,interpol_conditional_policy_c
             integer, dimension(glen_a)                :: map
             real(dp)                                  :: f_c1
+            integer                                     :: i1
 
             f_c1 = F(c_end(1),d,s,z)
             ! Compute a mapping from the exogenous m-grid to the endogenous m-grid
@@ -443,7 +484,90 @@ module ncegm
         end function
 
 
-        ! Some convenience functions
+
+
+        ! *******************************************************************************************************
+        ! ** Private helper subroutines
+        ! *******************************************************************************************************
+        subroutine requireSolved()
+            if (.NOT.is_solved) then
+                print *, "Error: The model must first be solved before obtaining policy and value functions."
+                stop
+            end if
+        end subroutine
+
+        logical function validate_model(m) result(valid)
+            type(ncegm_model), intent(in) :: m
+            valid = .FALSE.
+            if (.NOT. (associated(m%F) .AND. associated(m%dF) .AND. associated(m%d2F))) then
+                write (error_unit,*) "Invalid model: The return function and first and second derivatives with respect to c must be provided."
+            elseif (.NOT. associated(m%Gamma)) then
+                write (error_unit,*) "Invalid model: The budget constraint function Gamma must be provided"
+            elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%d_grid))) then
+                write (error_unit,*) "Invalid model: The grids for A and D must be provided."
+            else if (allocated(m%s_grid) .NEQV. associated(m%Psi)) then
+                write (error_unit,*) "Invalid model: If the state variable s is used, s_grid and the transition function Psi must be provided."
+            else if (allocated(m%z_grid) .NEQV. allocated(m%z_transition)) then
+                write (error_unit,*) "Invalid model: If the stochastic state variable z is used, z_grid and the transition matrix must be provided."
+            elseif (.NOT. allocated(m%V_initial)) then
+                write (error_unit,*) "Invalid model: Missing initial guess for value function.s"
+            elseif (m%beta<=0 .OR. m%beta>=1) then
+                write (error_unit,*) "Invalid model: Discount factor Beta must be in interval (0,1)"
+            else
+                valid = .TRUE.
+            end if
+        end function
+
+
+        ! *******************************************************************************************************
+        ! ** Public getter functions for the module client to obtain the output of the algorithm
+        ! *******************************************************************************************************
+        function ncegm_getPolicy_d() result(d)
+            real(dp), dimension(glen_a,glen_s,glen_z) :: d
+            call requireSolved
+            d = policy_d
+        end function
+
+        function ncegm_getPolicy_c() result(c)
+            real(dp), dimension(glen_a,glen_s,glen_z) :: c
+            call requireSolved
+            c = policy_c
+        end function
+
+        function ncegm_getPolicy_aprime() result(aprime)
+            real(dp), dimension(glen_a,glen_s,glen_z) :: aprime
+            call requireSolved
+            aprime = policy_aprime
+        end function
+
+        function ncegm_getValueFunction() result(v)
+            real(dp), dimension(glen_a,glen_s,glen_z) :: v
+            call requireSolved
+            v = valuef
+        end function
+
+        function ncegm_getConditionalPolicy_c() result(c)
+            real(dp), dimension(glen_a,glen_d,glen_s,glen_z) :: c
+            call requireSolved
+            c = policy_c_con
+        end function
+
+        function ncegm_getConditionalPolicy_aprime() result(aprime)
+            real(dp), dimension(glen_a,glen_d,glen_s,glen_z) :: aprime
+            call requireSolved
+            aprime = policy_aprime_con
+        end function
+
+        function ncegm_getConditionalValueFunction() result(v)
+            real(dp), dimension(glen_a,glen_d,glen_s,glen_z) :: v
+            call requireSolved
+            v = valuef_next_con
+        end function
+
+        ! *******************************************************************************************************
+        ! ** Convenience functions to simplify access to array- and scalar-valued model functions
+        ! *******************************************************************************************************
+
         function F_sc(c,d,s,z)
             real(dp), intent(in)   :: c,d,s,z
             real(dp)               :: F_sc
@@ -494,35 +618,5 @@ module ncegm
             a_arr = a
             dg_arr = model%dGamma(a_arr,d,s,z)
             dGamma_sc = dg_arr(1)
-        end function
-
-        ! Helper subroutines
-        subroutine requireSolved()
-            if (.NOT.is_solved) then
-                print *, "Error: The model must first be solved before obtaining policy and value functions."
-                stop
-            end if
-        end subroutine
-
-        logical function validate_model(m) result(valid)
-            type(ncegm_model), intent(in) :: m
-            valid = .FALSE.
-            if (.NOT. (associated(m%F) .AND. associated(m%dF) .AND. associated(m%d2F))) then
-                write (error_unit,*) "Invalid model: The return function and first and second derivatives with respect to c must be provided."
-            elseif (.NOT. associated(m%Gamma)) then
-                write (error_unit,*) "Invalid model: The budget constraint function Gamma must be provided"
-            elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%d_grid))) then
-                write (error_unit,*) "Invalid model: The grids for A and D must be provided."
-            else if (allocated(m%s_grid) .NEQV. associated(m%Psi)) then
-                write (error_unit,*) "Invalid model: If the state variable s is used, s_grid and the transition function Psi must be provided."
-            else if (allocated(m%z_grid) .NEQV. allocated(m%z_transition)) then
-                write (error_unit,*) "Invalid model: If the stochastic state variable z is used, z_grid and the transition matrix must be provided."
-            elseif (.NOT. allocated(m%V_initial)) then
-                write (error_unit,*) "Invalid model: Missing initial guess for value function.s"
-            elseif (m%beta<=0 .OR. m%beta>=1) then
-                write (error_unit,*) "Invalid model: Discount factor Beta must be in interval (0,1)"
-            else
-                valid = .TRUE.
-            end if
         end function
 end module ncegm
