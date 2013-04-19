@@ -20,6 +20,7 @@
 					<Add option="-fcheck=array-temps" />
 					<Add option="-fcheck=all" />
 					<Add option="-g" />
+					<Add option="-ffpe-trap=zero,overflow,underflow,invalid,denormal" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
