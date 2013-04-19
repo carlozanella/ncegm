@@ -1,3 +1,6 @@
+!**
+!* This module solves a non-smooth optimization problems involving a binary labour choice using the non-concave EGM algorithm provided by ncegm.
+!**
 module demo_binary_labour_choice
     use kinds, only: dp
     use ncegm, only: ncegm_setup, ncegm_solve, ncegm_model, ncegm_getPolicy_c, ncegm_getPolicy_d, ncegm_getValueFunction, ncegm_getPolicy_aprime
@@ -6,14 +9,19 @@ module demo_binary_labour_choice
     public :: start_demo_blc
     save
 
-    ! Model parameters
+    ! *******************************************************************************************************
+    ! ** Model parameters
+    ! *******************************************************************************************************
     real(dp), parameter                         :: tau    = 0.2435_dp
     real(dp), parameter                         :: delta  = 1.75_dp
     real(dp), parameter                         :: roa    = 1.05_dp
     real(dp), parameter                         :: w      = 3.0_dp
     real(dp), parameter                         :: beta   = 0.93_dp
 
-    ! Nummerical parameters
+
+    ! *******************************************************************************************************
+    ! ** Nummerical parameters
+    ! *******************************************************************************************************
     integer, parameter                          :: glen_a = 400
     real(dp), parameter                         :: a_min  = 0
     real(dp), parameter                         :: a_max  = 100
@@ -21,8 +29,12 @@ module demo_binary_labour_choice
 
 
     contains
+        ! **
+        ! * Sets up the household model and solves it using ncegm_solve(). Note that no state variable s (and hence no s_grid) is present in this model.
+        ! **
         subroutine start_demo_blc()
             type(ncegm_model)                   :: model
+            logical                             :: status
             real(dp), dimension(glen_a,1,1)     :: vfinitial,choice_d,cf,vf,ap
             integer                             :: i1
 
@@ -45,8 +57,12 @@ module demo_binary_labour_choice
             model%beta = beta
             model%V_initial = vfinitial
 
-            call ncegm_setup(model)
-            call ncegm_solve()
+            call ncegm_setup(model,status)
+            if (status) then
+                call ncegm_solve()
+            else
+                stop
+            end if
             vf = ncegm_getValueFunction()
             cf = ncegm_getPolicy_c()
             ap = ncegm_getPolicy_aprime()
@@ -61,6 +77,10 @@ module demo_binary_labour_choice
             end do
 
         end subroutine
+
+        ! *******************************************************************************************************
+        ! ** Model functions
+        ! *******************************************************************************************************
 
         function u(c,d,s,z)
             real(dp), dimension(:), intent(in)  :: c
