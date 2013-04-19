@@ -14,7 +14,7 @@ module demo_binary_labour_choice
     real(dp), parameter                         :: beta   = 0.93_dp
 
     ! Nummerical parameters
-    integer, parameter                          :: glen_a = 4000
+    integer, parameter                          :: glen_a = 400
     real(dp), parameter                         :: a_min  = 0
     real(dp), parameter                         :: a_max  = 100
     integer, parameter                          :: glen_d = 2
