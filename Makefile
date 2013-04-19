@@ -3,30 +3,30 @@
 #
 
 SRCS_f90d1 = \
-ncegm.f90 \
-tauchen.f90 \
-demo_fella11.f90 \
+demo_binary_labour_choice.f90 \
+ndifferential.f90 \
 main.f90 \
-newton.f90 \
-grids.f90 \
 normal_cdf.f90 \
 interpolation.f90 \
+demo_fella11.f90 \
 kinds.f90 \
-ndifferential.f90 \
-demo_binary_labour_choice.f90 
+grids.f90 \
+newton.f90 \
+tauchen.f90 \
+ncegm.f90 
 
 OBJS_f90d1 = \
-ncegm.o \
-tauchen.o \
-demo_fella11.o \
+demo_binary_labour_choice.o \
+ndifferential.o \
 main.o \
-newton.o \
-grids.o \
 normal_cdf.o \
 interpolation.o \
+demo_fella11.o \
 kinds.o \
-ndifferential.o \
-demo_binary_labour_choice.o 
+grids.o \
+newton.o \
+tauchen.o \
+ncegm.o 
 
 SRC_DIR_f90d1 = 
 OBJS_DIR = obj/
@@ -57,16 +57,24 @@ clean :
 	rm -f $(EXE_DIR)$(EXE)
 
 # Dependencies of files
-ncegm.o: \
-    ncegm.f90 \
-    interpolation.o \
+demo_binary_labour_choice.o: \
+    demo_binary_labour_choice.f90 \
+    grids.o \
     kinds.o \
-    ndifferential.o \
-    newton.o
-tauchen.o: \
-    tauchen.f90 \
-    kinds.o \
-    normal_cdf.o
+    ncegm.o
+ndifferential.o: \
+    ndifferential.f90 \
+    kinds.o
+main.o: \
+    main.f90 \
+    demo_binary_labour_choice.o \
+    demo_fella11.o
+normal_cdf.o: \
+    normal_cdf.f90 \
+    kinds.o
+interpolation.o: \
+    interpolation.f90 \
+    kinds.o
 demo_fella11.o: \
     demo_fella11.f90 \
     grids.o \
@@ -74,30 +82,22 @@ demo_fella11.o: \
     ncegm.o \
     ndifferential.o \
     tauchen.o
-main.o: \
-    main.f90 \
-    demo_binary_labour_choice.o \
-    demo_fella11.o
-newton.o: \
-    newton.f90 \
-    kinds.o
+kinds.o: \
+    kinds.f90
 grids.o: \
     grids.f90 \
     kinds.o
-normal_cdf.o: \
-    normal_cdf.f90 \
+newton.o: \
+    newton.f90 \
     kinds.o
-interpolation.o: \
-    interpolation.f90 \
-    kinds.o
-kinds.o: \
-    kinds.f90
-ndifferential.o: \
-    ndifferential.f90 \
-    kinds.o
-demo_binary_labour_choice.o: \
-    demo_binary_labour_choice.f90 \
-    grids.o \
+tauchen.o: \
+    tauchen.f90 \
     kinds.o \
-    ncegm.o
+    normal_cdf.o
+ncegm.o: \
+    ncegm.f90 \
+    interpolation.o \
+    kinds.o \
+    ndifferential.o \
+    newton.o
 
