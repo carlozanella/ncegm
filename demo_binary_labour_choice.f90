@@ -5,6 +5,7 @@ module demo_binary_labour_choice
     use kinds, only: dp
     use ncegm, only: ncegm_setup, ncegm_solve, ncegm_model, ncegm_getPolicy_c, ncegm_getPolicy_d, ncegm_getValueFunction, ncegm_getPolicy_aprime
     use grids, only: build_grid
+    implicit none
     private
     public :: start_demo_blc
     save
@@ -52,6 +53,7 @@ module demo_binary_labour_choice
             model%F => u
             model%dF => du
             model%d2F => d2u
+            model%dF_inv => du_inv
             model%Gamma => Gamma
             model%dGamma => dGamma
             model%beta = beta
@@ -99,6 +101,13 @@ module demo_binary_labour_choice
             du = c**(-tau)
 
         end function du
+
+        function du_inv(mret,d,s,z)
+            real(dp), intent(in)                :: mret,d,s,z
+            real(dp)                            :: du_inv
+
+            du_inv = (1/mret)**(1/tau)
+        end function du_inv
 
         function d2u(c,d,s,z)
             real(dp), dimension(:), intent(in)  :: c
