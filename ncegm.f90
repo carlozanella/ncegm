@@ -203,7 +203,7 @@ module ncegm
             real(dp)                                         :: sup_norm_diff
             real(dp), dimension(glen_a)                      :: m_end, c_end, valuef_end
             integer                                          :: k,d_max,i1
-            real(dp)                                         :: d,s,z,c,t1,t2
+            real(dp)                                         :: a,d,s,z,c,t1,t2
             logical, intent(out)                             :: status
 
             ! 1. Compute derivative of the initial value function and the m-grid
@@ -277,10 +277,11 @@ module ncegm
                             d_max = maxloc(valuef_next_con(index_a,:,index_s,index_z),1)
                             d_index_choice(index_a,index_s,index_z) = d_max
                             d = model%d_grid(d_max)
+                            a = model%a_grid(index_a)
                             valuef_next(index_a,index_s,index_z) = valuef_next_con(index_a,d_max,index_s,index_z)
                             if (associated(model%dGamma)) then
                                 c = policy_c_con(index_a,d_max,index_s,index_z)
-                                dvaluef_next(index_a,index_s,index_z) = dGamma_sc(model%a_grid(index_a),model%d_grid(d_max),model%s_grid(index_s),model%z_grid(index_z))*dF(c,d,s,z)
+                                dvaluef_next(index_a,index_s,index_z) = dGamma_sc(a,d,s,z)*dF(c,d,s,z)
                             end if
                         end do
                         if (.NOT. associated(model%dGamma)) then
