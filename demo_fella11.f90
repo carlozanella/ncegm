@@ -83,9 +83,9 @@ module demo_fella11
             m%F=>u
             m%dF=>du
             m%d2F=>d2u
-            ! Specify budget constraint Gamma and, optionally, its derivative
-            m%Gamma => Gamma
-            m%dGamma => dGamma
+            ! Specify budget constraint Lambda and, optionally, its derivative
+            m%Lambda => Lambda
+            m%dLambda => dLambda
             ! Specify transition function for state variable s
             m%Psi=>Psi
             ! Specify Markov matrix for the transition of the stochastic variable z
@@ -138,26 +138,26 @@ module demo_fella11
             d2u = (-tau*((theta*c**(tau-1))/(theta*c**tau+(1-theta)*(kappa*d)**tau))**2 + (tau-1)*theta*c**(tau-2)/(theta*c**tau+(1-theta)*(kappa*d)**tau))
         end function d2u
 
-        function Gamma(a,d,s,z)
+        function Lambda(a,d,s,z)
             real(dp), dimension(:), intent(in) :: a
             real(dp), intent(in)               :: d,s,z
-            real(dp), dimension(size(a))       :: Gamma
+            real(dp), dimension(size(a))       :: Lambda
             real(dp)                           :: trans_cost
             if (s.NE.d) then
                 trans_cost = gamma_*d
             else
                 trans_cost = 0.d0
             end if
-            Gamma = (1.d0+6.d-2)*( a-(1.d0-downp)*s) + s- downp*d + z - trans_cost
-        end function Gamma
+            Lambda = (1.d0+6.d-2)*( a-(1.d0-downp)*s) + s- downp*d + z - trans_cost
+        end function Lambda
 
-        function dGamma(a,d,s,z)
+        function dLambda(a,d,s,z)
             real(dp), dimension(:), intent(in) :: a
             real(dp), intent(in)               :: d,s,z
-            real(dp), dimension(size(a))       :: dGamma
+            real(dp), dimension(size(a))       :: dLambda
             real(dp)                           :: trans_cost
-            dGamma = 1.d0+6.d-2
-        end function dGamma
+            dLambda = 1.d0+6.d-2
+        end function dLambda
 
         function Psi(s_index,d_index,z_index)
             integer, intent(in)                :: s_index, d_index, z_index

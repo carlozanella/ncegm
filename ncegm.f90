@@ -58,8 +58,8 @@ module ncegm
         integer                                                      :: a_grid_length
         procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null(),d2F=>null()    ! REQUIRED: return function F and first- and second derivatives with respect to c Fc and Fcc
         procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                      ! OPTIONAL: inverse of marginal return function Fc'
-        procedure(BudgetConstraint), pointer, nopass                 :: Gamma=>null()                       ! REQUIRED: budget constraint
-        procedure(BudgetConstraint), pointer, nopass                 :: dGamma=>null()                      ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
+        procedure(BudgetConstraint), pointer, nopass                 :: Lambda=>null()                       ! REQUIRED: budget constraint
+        procedure(BudgetConstraint), pointer, nopass                 :: dLambda=>null()                      ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
         procedure(StateTransition), pointer, nopass                  :: Psi=>null()                         ! REQUIRED if s is used: Transition function from s_t to s{t+1}
         real(dp), dimension(:,:,:), allocatable                      :: V_initial                           ! REQUIRED: initial guess of the value function
         real(dp), dimension(:), allocatable                          :: a_grid,d_grid,&                     ! REQUIRED: grids for A, D
@@ -213,7 +213,7 @@ module ncegm
                 do index_s=1, glen_s
                     dvaluef(:,index_s,index_z) = lindiff(model%a_grid, valuef(:,index_s, index_z))
                     do index_d=1,glen_d
-                        m_grid(:,index_d,index_s,index_z) = model%Gamma(model%a_grid,model%d_grid(index_d),model%s_grid(index_s),model%z_grid(index_z))
+                        m_grid(:,index_d,index_s,index_z) = model%Lambda(model%a_grid,model%d_grid(index_d),model%s_grid(index_s),model%z_grid(index_z))
                     end do
                 end do
             end do
@@ -279,12 +279,12 @@ module ncegm
                             d = model%d_grid(d_max)
                             a = model%a_grid(index_a)
                             valuef_next(index_a,index_s,index_z) = valuef_next_con(index_a,d_max,index_s,index_z)
-                            if (associated(model%dGamma)) then
+                            if (associated(model%dLambda)) then
                                 c = policy_c_con(index_a,d_max,index_s,index_z)
-                                dvaluef_next(index_a,index_s,index_z) = dGamma_sc(a,d,s,z)*dF(c,d,s,z)
+                                dvaluef_next(index_a,index_s,index_z) = dLambda_sc(a,d,s,z)*dF(c,d,s,z)
                             end if
                         end do
-                        if (.NOT. associated(model%dGamma)) then
+                        if (.NOT. associated(model%dLambda)) then
                             dvaluef_next(:,index_s,index_z) = lindiff(model%a_grid, valuef_next(:,index_s, index_z))
                         end if
                     end do
@@ -502,8 +502,8 @@ module ncegm
             valid = .FALSE.
             if (.NOT. (associated(m%F) .AND. associated(m%dF) .AND. associated(m%d2F))) then
                 write (error_unit,*) "Invalid model: The return function and first and second derivatives with respect to c must be provided."
-            elseif (.NOT. associated(m%Gamma)) then
-                write (error_unit,*) "Invalid model: The budget constraint function Gamma must be provided"
+            elseif (.NOT. associated(m%Lambda)) then
+                write (error_unit,*) "Invalid model: The budget constraint function Lambda must be provided"
             elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%d_grid))) then
                 write (error_unit,*) "Invalid model: The grids for A and D must be provided."
             else if (allocated(m%s_grid) .NEQV. associated(m%Psi)) then
@@ -611,13 +611,13 @@ module ncegm
             real(dp), dimension(size(c))        :: d2F_arr
             d2F_arr=model%d2F(c,d,s,z)
         end function d2F_arr
-        function dGamma_sc(a,d,s,z)
+        function dLambda_sc(a,d,s,z)
             real(dp),               intent(in)  :: a
             real(dp), intent(in)                :: d,s,z
-            real(dp)                             :: dGamma_sc
+            real(dp)                             :: dLambda_sc
             real(dp), dimension(1)              :: a_arr,dg_arr
             a_arr = a
-            dg_arr = model%dGamma(a_arr,d,s,z)
-            dGamma_sc = dg_arr(1)
+            dg_arr = model%dLambda(a_arr,d,s,z)
+            dLambda_sc = dg_arr(1)
         end function
 end module ncegm

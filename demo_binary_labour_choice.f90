@@ -54,8 +54,8 @@ module demo_binary_labour_choice
             model%dF => du
             model%d2F => d2u
             model%dF_inv => du_inv
-            model%Gamma => Gamma
-            model%dGamma => dGamma
+            model%Lambda => Lambda
+            model%dLambda => dLambda
             model%beta = beta
             model%V_initial = vfinitial
 
@@ -118,21 +118,21 @@ module demo_binary_labour_choice
 
         end function d2u
 
-        function Gamma(a,d,s,z)
+        function Lambda(a,d,s,z)
             real(dp), dimension(:), intent(in) :: a
             real(dp), intent(in)               :: d,s,z
-            real(dp), dimension(size(a))       :: Gamma
+            real(dp), dimension(size(a))       :: Lambda
 
-            Gamma = roa*a+w*d
+            Lambda = roa*a+w*d
 
-        end function Gamma
+        end function Lambda
 
-        function dGamma(a,d,s,z)
+        function dLambda(a,d,s,z)
             real(dp), dimension(:), intent(in) :: a
             real(dp), intent(in)               :: d,s,z
-            real(dp), dimension(size(a))       :: dGamma
+            real(dp), dimension(size(a))       :: dLambda
 
-            dGamma = roa
+            dLambda = roa
 
-        end function dGamma
+        end function dLambda
 end module demo_binary_labour_choice
