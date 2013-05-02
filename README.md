@@ -220,7 +220,7 @@ When trying to solve a model with a huge state space, the program might run out 
 
 * either disable optimizations so that arrays are no longer allocated on the stack (a performance penalty has
   to be expected), or
-* increase the stack size: ulimit -s <new-stack-size> with bash on Linux.
+* increase the stack size: ulimit -s [new-stack-size] with bash on Linux.
 
 Todo
 ----
@@ -232,7 +232,3 @@ Todo
 Licensing
 ---------
 See LICENSE.
-
-Contact
--------
-zanella.carlo@gmail.com
