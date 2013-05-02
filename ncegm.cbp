@@ -12,7 +12,6 @@
 				<Option type="1" />
 				<Option compiler="gfortran" />
 				<Compiler>
-					<Add option="-W" />
 					<Add option="-fcheck=recursion" />
 					<Add option="-fcheck=pointer" />
 					<Add option="-fcheck=mem" />
@@ -41,6 +40,7 @@
 			<Add option="-std=f2003" />
 			<Add option="-ffree-line-length-none" />
 			<Add option="-W" />
+			<Add option="-Wextra" />
 		</Compiler>
 		<Unit filename="demo_binary_labour_choice.f90">
 			<Option weight="3" />
