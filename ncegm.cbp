@@ -63,7 +63,7 @@
 		<Unit filename="ncegm.f90">
 			<Option weight="2" />
 		</Unit>
-		<Unit filename="ndifferential.f90">
+		<Unit filename="nderiv.f90">
 			<Option weight="1" />
 		</Unit>
 		<Unit filename="newton.f90">

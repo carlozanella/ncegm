@@ -43,32 +43,43 @@ module demo_binary_labour_choice
             allocate(model%a_grid(glen_a),model%d_grid(glen_d))
 
 
+            ! Specifies the grid for A and D
             model%a_grid = build_grid(glen_a,a_min,a_max,0) ! Uniform grid over assets a
             model%d_grid = (/ 0.0_dp , 1.0_dp /)
 
+            ! construct a guess for the value function by assuming a consumption policy linear in available assets
+            vfinitial(:,1,1) = u(0.05_dp*model%a_grid,1.0_dp,0.0_dp,0.0_dp)
 
-            vfinitial(:,1,1) = u(0.1_dp*model%a_grid,1.0_dp,0.0_dp,0.0_dp)
-
-
+            ! Specifies the functions of the model
             model%F => u
             model%dF => du
             model%d2F => d2u
             model%dF_inv => du_inv
             model%Lambda => Lambda
             model%dLambda => dLambda
+
+            ! Specifies the discount factor Beta
             model%beta = beta
+
+            ! Specifies an initial guess (computed above) for the value function
             model%V_initial = vfinitial
 
+            ! Now initialize the module
             call ncegm_setup(model,status)
             if (status) then
+                ! If the model is valid, the model is solved
                 call ncegm_solve()
             else
                 stop
             end if
+
+            ! The computed value function and the policy functions are retrieved
             vf = ncegm_getValueFunction()
             cf = ncegm_getPolicy_c()
             ap = ncegm_getPolicy_aprime()
             choice_d = ncegm_getPolicy_d()
+
+            ! The result is printed
             print *, "Value function V(a) & policy functions:"
             print *, ""
             print "(a12,a27,a27,a27,a27)", "a", "V(a)", "c*(a)", "a'*(a)", "d*(a)"

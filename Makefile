@@ -3,48 +3,56 @@
 #
 
 SRCS_f90d1 = \
-demo_binary_labour_choice.f90 \
-ndifferential.f90 \
-main.f90 \
-normal_cdf.f90 \
-interpolation.f90 \
-demo_fella11.f90 \
-kinds.f90 \
 grids.f90 \
 newton.f90 \
 tauchen.f90 \
-ncegm.f90 
+kinds.f90 \
+nderiv.f90 \
+demo_binary_labour_choice.f90 \
+main.f90 \
+normal_cdf.f90 \
+demo_fella11.f90 \
+ncegm.f90 \
+interpolation.f90 
+
+SRCS_d1 = \
+README 
 
 OBJS_f90d1 = \
-demo_binary_labour_choice.o \
-ndifferential.o \
-main.o \
-normal_cdf.o \
-interpolation.o \
-demo_fella11.o \
-kinds.o \
 grids.o \
 newton.o \
 tauchen.o \
-ncegm.o 
+kinds.o \
+nderiv.o \
+demo_binary_labour_choice.o \
+main.o \
+normal_cdf.o \
+demo_fella11.o \
+ncegm.o \
+interpolation.o 
+
+OBJS_d1 = \
+
 
 SRC_DIR_f90d1 = 
+
+SRC_DIR_d1 = 
 OBJS_DIR = obj/
 EXE_DIR = bin/
 
 EXE = ncegm
 FC = gfortran
 IDIR = 
-CFLAGS = -std=f2003 -ffree-line-length-none -W -fexpensive-optimizations -Ofast  -J$(OBJS_DIR) $(IDIR)
+CFLAGS = -std=f2003 -ffree-line-length-none -W -Wextra -fexpensive-optimizations -Ofast   -J$(OBJS_DIR) $(IDIR)
 LFLAGS = -s 
 LIBS = 
 
-VPATH = $(SRC_DIR_f90d1):$(OBJS_DIR)
-OBJS = $(addprefix $(OBJS_DIR), $(OBJS_f90d1))
+VPATH = $(SRC_DIR_f90d1):$(OBJS_DIR):$(SRC_DIR_d1):$(OBJS_DIR)
+OBJS = $(addprefix $(OBJS_DIR), $(OBJS_f90d1) $(OBJS_d1))
 
 all : $(EXE)
 
-$(EXE) : $(OBJS_f90d1)
+$(EXE) : $(OBJS_f90d1) $(OBJS_d1)
 	@mkdir -p $(EXE_DIR)
 	$(FC) -o $(EXE_DIR)$(EXE) $(OBJS) $(LFLAGS) $(LIBS)
 
@@ -52,38 +60,15 @@ $(OBJS_f90d1):
 	@mkdir -p $(OBJS_DIR)
 	$(FC) $(CFLAGS) -c $(SRC_DIR_f90d1)$(@:.o=.f90) -o $(OBJS_DIR)$@
 
+$(OBJS_d1):
+	@mkdir -p $(OBJS_DIR)
+	$(FC) $(CFLAGS) -c $(SRC_DIR_d1)$(@:.o=.) -o $(OBJS_DIR)$@
+
 clean :
 	rm -f $(OBJS_DIR)*.*
 	rm -f $(EXE_DIR)$(EXE)
 
 # Dependencies of files
-demo_binary_labour_choice.o: \
-    demo_binary_labour_choice.f90 \
-    grids.o \
-    kinds.o \
-    ncegm.o
-ndifferential.o: \
-    ndifferential.f90 \
-    kinds.o
-main.o: \
-    main.f90 \
-    demo_binary_labour_choice.o \
-    demo_fella11.o
-normal_cdf.o: \
-    normal_cdf.f90 \
-    kinds.o
-interpolation.o: \
-    interpolation.f90 \
-    kinds.o
-demo_fella11.o: \
-    demo_fella11.f90 \
-    grids.o \
-    kinds.o \
-    ncegm.o \
-    ndifferential.o \
-    tauchen.o
-kinds.o: \
-    kinds.f90
 grids.o: \
     grids.f90 \
     kinds.o
@@ -94,10 +79,36 @@ tauchen.o: \
     tauchen.f90 \
     kinds.o \
     normal_cdf.o
+kinds.o: \
+    kinds.f90
+nderiv.o: \
+    nderiv.f90 \
+    kinds.o
+demo_binary_labour_choice.o: \
+    demo_binary_labour_choice.f90 \
+    grids.o \
+    kinds.o \
+    ncegm.o
+main.o: \
+    main.f90 \
+    demo_binary_labour_choice.o \
+    demo_fella11.o
+normal_cdf.o: \
+    normal_cdf.f90 \
+    kinds.o
+demo_fella11.o: \
+    demo_fella11.f90 \
+    grids.o \
+    kinds.o \
+    ncegm.o \
+    tauchen.o
 ncegm.o: \
     ncegm.f90 \
     interpolation.o \
     kinds.o \
-    ndifferential.o \
+    nderiv.o \
     newton.o
+interpolation.o: \
+    interpolation.f90 \
+    kinds.o
 

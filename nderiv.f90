@@ -1,15 +1,15 @@
-module ndifferential
+module nderiv
     use kinds, only: dp
     implicit none
     private
-    public :: lindiff
+    public :: linderiv
 
     contains
 
     ! Calculates the derivative of the function y = f(x) using the method of finite differences
     ! Input: x,y
     ! Output: the right differential df(x)/dx. Note: the last two values are equal
-    function lindiff(x,y) result(dxy)
+    function linderiv(x,y) result(dxy)
         real(dp),dimension(:), intent(in)        :: x,y
         real(dp),dimension(size(x))              :: dxy
         integer                                  :: dx_size
@@ -19,4 +19,4 @@ module ndifferential
         dxy(dx_size)=dxy(dx_size-1)
     end function
 
-end module ndifferential
+end module nderiv

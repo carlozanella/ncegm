@@ -1,7 +1,10 @@
+!**
+!* This module provides the EGM solution algorithm to solve non-concave dynamic programming models.
+!**
 module ncegm
     use kinds, only: dp
     use iso_fortran_env, only: error_unit
-    use ndifferential, only: lindiff
+    use nderiv, only: linderiv
     use interpolation, only: interpolate_ordered
     use newton, only: root
     implicit none
@@ -55,11 +58,11 @@ module ncegm
 
 
     type ncegm_model
-        integer                                                      :: a_grid_length
-        procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null(),d2F=>null()    ! REQUIRED: return function F and first- and second derivatives with respect to c Fc and Fcc
+        procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null()                ! REQUIRED: return function F and first derivative with respect to c Fc
+        procedure(ReturnFunction), pointer, nopass                   :: d2F=>null()                         ! OPTIONAL: second derivative of F with respect to c Fcc. In case the marginal inverse is provided, this is optional.
         procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                      ! OPTIONAL: inverse of marginal return function Fc'
-        procedure(BudgetConstraint), pointer, nopass                 :: Lambda=>null()                       ! REQUIRED: budget constraint
-        procedure(BudgetConstraint), pointer, nopass                 :: dLambda=>null()                      ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
+        procedure(BudgetConstraint), pointer, nopass                 :: Lambda=>null()                      ! REQUIRED: budget constraint
+        procedure(BudgetConstraint), pointer, nopass                 :: dLambda=>null()                     ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
         procedure(StateTransition), pointer, nopass                  :: Psi=>null()                         ! REQUIRED if s is used: Transition function from s_t to s{t+1}
         real(dp), dimension(:,:,:), allocatable                      :: V_initial                           ! REQUIRED: initial guess of the value function
         real(dp), dimension(:), allocatable                          :: a_grid,d_grid,&                     ! REQUIRED: grids for A, D
@@ -196,13 +199,19 @@ module ncegm
         ! ** EGM core subroutines
         ! *******************************************************************************************************
 
+        ! **
+        ! * Performs the actual value function iteration.
+        ! *
+        ! * Output:
+        ! *     - status (optional): a flag indicating if the value functions have converged
+        ! **
         subroutine valfniteration(status)
             integer                                          :: index_a,index_d,index_s,index_z,index_s_prime,iter
             real(dp), dimension(glen_a,glen_s,glen_z)        :: valuef_next,dvaluef,dvaluef_next,exp_valuef,exp_dvaluef
             integer, dimension(glen_a,glen_s,glen_z)         :: d_index_choice
             real(dp)                                         :: sup_norm_diff
             real(dp), dimension(glen_a)                      :: m_end, c_end, valuef_end
-            integer                                          :: k,d_max,i1
+            integer                                          :: k,d_max
             real(dp)                                         :: a,d,s,z,c,t1,t2
             logical, intent(out)                             :: status
 
@@ -211,7 +220,7 @@ module ncegm
 
             do index_z=1, glen_z
                 do index_s=1, glen_s
-                    dvaluef(:,index_s,index_z) = lindiff(model%a_grid, valuef(:,index_s, index_z))
+                    dvaluef(:,index_s,index_z) = linderiv(model%a_grid, valuef(:,index_s, index_z))
                     do index_d=1,glen_d
                         m_grid(:,index_d,index_s,index_z) = model%Lambda(model%a_grid,model%d_grid(index_d),model%s_grid(index_s),model%z_grid(index_z))
                     end do
@@ -285,7 +294,7 @@ module ncegm
                             end if
                         end do
                         if (.NOT. associated(model%dLambda)) then
-                            dvaluef_next(:,index_s,index_z) = lindiff(model%a_grid, valuef_next(:,index_s, index_z))
+                            dvaluef_next(:,index_s,index_z) = linderiv(model%a_grid, valuef_next(:,index_s, index_z))
                         end if
                     end do
                 end do
@@ -329,6 +338,22 @@ module ncegm
 
         end subroutine
 
+        ! **
+        ! * Subroutine that maximizes the Bellman maximand based on the EGM algorithm.
+        ! *
+        ! * Input:
+        ! *     - exp_valuef: The discounted expected value of next period's state (a'). Is equal to V tilde.
+        ! *     - exp_valuef: The derivative of the discounted expected value of next period's state (a'). This is equal to V' tilde.
+        ! *     - d: The discrete choice d
+        ! *     - s: The deterministic state s
+        ! *     - z: The stochastic state z
+        ! *
+        ! * Output:
+        ! *     - m_end: The endogenous gridpoints for m
+        ! *     - c_end: The endogenous gridpoints for c
+        ! *     - valuef_end: The value function for the endogenous gridpoints m and c
+        ! *     - k: The number of endogenous gridpoints
+        ! **
         subroutine egm_maximize(exp_valuef, exp_dvaluef, d, s, z, m_end, c_end, valuef_end, k)
             real(dp), dimension(glen_a), intent(in)            :: exp_valuef, exp_dvaluef
             real(dp), intent(in)                               :: d,s,z
@@ -443,6 +468,22 @@ module ncegm
               end if
         end subroutine
 
+        ! **
+        ! * Subroutine that interpolates the value function and the policy functions on the grid for A using the exogenous and the endogenous grid for m.
+        ! *
+        ! * Input:
+        ! *     - d: The discrete choice d
+        ! *     - s: The deterministic state s
+        ! *     - z: The stochastic state z
+        ! *     - m_exo: The exogenous gridpoints for m
+        ! *     - m_end: The endogenous gridpoints for m
+        ! *     - c_end: The endogenous gridpoints for c
+        ! *     - valuef_end: The value function for the endogenous gridpoints m and c
+        ! *
+        ! * Output:
+        ! *     - interpol_valuef: The interpolated value function (defined on grid_a, conditional on d)
+        ! *     - interpol_conditional_policy_c: The interpolated policy function for c (conditional on d)
+        ! **
         subroutine egm_interpolate(d,s,z,m_exo,m_end, c_end,valuef_end,interpol_valuef,interpol_conditional_policy_c)
             real(dp), dimension(:), intent(in)        :: m_end, c_end,valuef_end
             real(dp), intent(in)                      :: d,s,z
@@ -450,7 +491,6 @@ module ncegm
             real(dp), dimension(glen_a), intent(out)  :: interpol_valuef,interpol_conditional_policy_c
             integer, dimension(glen_a)                :: map
             real(dp)                                  :: f_c1
-            integer                                     :: i1
 
             f_c1 = F(c_end(1),d,s,z)
             ! Compute a mapping from the exogenous m-grid to the endogenous m-grid
@@ -474,7 +514,11 @@ module ncegm
             end where
         end subroutine
 
-        ! Two callback functions used by egm_maximize to solve for the lower bound on m at and below which the constraint a >= a_min is binding
+        ! *******************************************************************************************************
+        ! ** Two callback functions used by egm_maximize to solve for the lower bound on m at and below which
+        ! ** the constraint a >= a_min is binding
+        ! *******************************************************************************************************
+        !
         real(dp) function z_find_lowerbound(m,d,s,z,a_prime)
             real(dp), intent(in)   :: m,d,s,z,a_prime
             z_find_lowerbound = F(m-model%a_grid(1),d,s,z) - F(m-a_prime,d,s,z)
@@ -483,9 +527,6 @@ module ncegm
             real(dp), intent(in)   :: m,d,s,z,a_prime
             d_z_find_lowerbound = dF(m-model%a_grid(1),d,s,z) - dF(m-a_prime,d,s,z)
         end function
-
-
-
 
         ! *******************************************************************************************************
         ! ** Private helper subroutines
@@ -497,11 +538,21 @@ module ncegm
             end if
         end subroutine
 
+    ! **
+    ! * Checks if the given input model is valid and can be solved using ncegm.
+    ! *
+    ! * Input:
+    ! *     - m: model to be validated
+    ! *
+    ! * Return value: boolean; .TRUE. if model is valid, .FALSE. otherwise
+    ! **
         logical function validate_model(m) result(valid)
             type(ncegm_model), intent(in) :: m
             valid = .FALSE.
-            if (.NOT. (associated(m%F) .AND. associated(m%dF) .AND. associated(m%d2F))) then
-                write (error_unit,*) "Invalid model: The return function and first and second derivatives with respect to c must be provided."
+            if (.NOT. (associated(m%F) .AND. associated(m%dF))) then
+                write (error_unit,*) "Invalid model: The return function and its first derivative with respect to c must be provided."
+            else if (.NOT. (associated(m%dF_inv) .OR. associated(m%d2F))) then
+                write (error_unit,*) "Invalid model: Either the marginal inverse of the return function or its second derivative must be provided."
             elseif (.NOT. associated(m%Lambda)) then
                 write (error_unit,*) "Invalid model: The budget constraint function Lambda must be provided"
             elseif (.NOT. (allocated(m%a_grid) .AND. allocated(m%d_grid))) then
@@ -511,14 +562,13 @@ module ncegm
             else if (allocated(m%z_grid) .NEQV. allocated(m%z_transition)) then
                 write (error_unit,*) "Invalid model: If the stochastic state variable z is used, z_grid and the transition matrix must be provided."
             elseif (.NOT. allocated(m%V_initial)) then
-                write (error_unit,*) "Invalid model: Missing initial guess for value function.s"
+                write (error_unit,*) "Invalid model: Missing initial guess for value function."
             elseif (m%beta<=0 .OR. m%beta>=1) then
-                write (error_unit,*) "Invalid model: Discount factor Beta must be in interval (0,1)"
+                write (error_unit,*) "Invalid model: Discount factor Beta must be in interval (0,1)."
             else
                 valid = .TRUE.
             end if
         end function
-
 
         ! *******************************************************************************************************
         ! ** Public getter functions for the module client to obtain the output of the algorithm

@@ -6,7 +6,6 @@ module demo_fella11
     use ncegm, only: ncegm_model,ncegm_setup,ncegm_solve
     use grids, only: build_grid
     use tauchen, only: tauchen_discretize
-    use ndifferential, only: lindiff
     implicit none
     private
     save
