@@ -1,8 +1,11 @@
+!**
+!* Provides kinds used by all modules of this package.
+!* This module can be understood as an interface to integrate this package in other projects.
+!**
 module kinds
     implicit none
     private
-    public :: sp,dp
+    public :: dp
 
-    integer, parameter :: sp = selected_real_kind(p=4,r=30)
     integer, parameter :: dp = selected_real_kind(p=15,r=30)
 end module kinds

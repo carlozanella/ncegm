@@ -353,6 +353,8 @@ module ncegm
         ! *     - c_end: The endogenous gridpoints for c
         ! *     - valuef_end: The value function for the endogenous gridpoints m and c
         ! *     - k: The number of endogenous gridpoints
+        ! *
+        ! * Note: Code closely follows Fella (2011)
         ! **
         subroutine egm_maximize(exp_valuef, exp_dvaluef, d, s, z, m_end, c_end, valuef_end, k)
             real(dp), dimension(glen_a), intent(in)            :: exp_valuef, exp_dvaluef
@@ -483,6 +485,8 @@ module ncegm
         ! * Output:
         ! *     - interpol_valuef: The interpolated value function (defined on grid_a, conditional on d)
         ! *     - interpol_conditional_policy_c: The interpolated policy function for c (conditional on d)
+        ! *
+        ! * Note: Code closely follows Fella (2011)
         ! **
         subroutine egm_interpolate(d,s,z,m_exo,m_end, c_end,valuef_end,interpol_valuef,interpol_conditional_policy_c)
             real(dp), dimension(:), intent(in)        :: m_end, c_end,valuef_end

@@ -1,10 +1,22 @@
+! **
+! * Provides the cumulative distribution function (CDF) of the normal distribution
+! **
 module normal_cdf
     use kinds, only: dp
     implicit none
     private
     public :: cdf_normal
+
     contains
 
+        ! **
+        ! * Returns the value of the normal cumulative distribution function for a given x.
+        ! *
+        ! * Input:
+        ! *     - x: the x, at which the CDF is evaluated
+        ! *
+        ! * Return value: the value of the CDF of the normal distribution at x
+        ! **
         real(dp) function cdf_normal(x)
             real(dp), intent(in)   :: x
             real(dp)               ::q,pdf

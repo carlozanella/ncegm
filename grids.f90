@@ -1,3 +1,6 @@
+!**
+!* Provides functions to produce linearly and exponentially spaced grids
+!**
 module grids
     use kinds, only: dp
     implicit none
@@ -5,6 +8,20 @@ module grids
     public :: build_grid
 
     contains
+
+        ! **
+        ! * Searches for the root of the function f(x, [p2,p3,p4,p5])-offset_in.
+        ! *
+        ! * Input:
+        ! *     - grid_length: the length of the grid to be produces
+        ! *     - min: the value of the first (lowest value) point in the grid
+        ! *     - max: the value of the last (highest value) point in the grid
+        ! *     - expg_in (optional): specifies the order of the exponential spacing of the grid. Default is 0, which
+        ! *       corresponds to a linear spacing of the grid (uniform grid). A value of 1 means an exponential grid,
+        ! *       a value of 2 corresponds to a double exponential grid, and so on.
+        ! *
+        ! * Return value: the grid
+        ! **
         function build_grid(grid_length,min,max,expg_in) result(grid)
             integer, intent(in)              :: grid_length
             real(dp), intent(in)             :: min,max

@@ -1,3 +1,6 @@
+! **
+! * Provides Tauchen (1986)'s method for discretization of AR(1) processes
+! **
 module tauchen
     use kinds, only: dp
     use normal_cdf, only: cdf_normal
@@ -6,8 +9,25 @@ module tauchen
     public :: tauchen_discretize
 
     contains
+
+        ! **
+        ! * Discretizes an AR(1) process using Tauchen (1986)'s method.
+        ! * This function calculates Tauchen points for AR(1) x=(1-rho)mu0 + rho*x_(-1) + u,
+        ! * the transition matrix and the CDF of the transition matrix.
+        ! *
+        ! * Input:
+        ! *     - rho: AR(1) autoregressive coefficient
+        ! *     - mu0: AR(1) autoregressive coefficient
+        ! *     - sigma: AR(1) standard deviation of white noise process u
+        ! *     - n: number of grid points
+        ! *     - cover_tauchen: number of standard deviations to be covered by the grid
+        ! *
+        ! * Output:
+        ! *     - y: discretized grid for the AR(1) variable
+        ! *     - pi: transition matrix of Markov chain
+        ! *     - picum: cumulative distribution function of the transition matrix
+        ! **
         subroutine tauchen_discretize(y,pi,picum,rho,mu0,sigma,n,cover_tauchen)
-            ! Calculates Tauchen points for AR(1) x=(1-rho)mu0 + rho*x_(-1) + u
             ! Adapted from sub_tauchen by Jesus Fernandez-Villaverde (undated)
             ! cover_tauchen is the number of SD (each side) that one wants
             ! to cover.
