@@ -98,7 +98,7 @@ module demo_fella11
             m%V_initial=vfguess
             ! Finally, specify discount factor beta
             m%beta=bita
-            m%state_independent_foc=.TRUE.
+            m%state_independent_foc_and_f=.TRUE.
 
             call ncegm_setup(m,status)
             if (status) call ncegm_solve()

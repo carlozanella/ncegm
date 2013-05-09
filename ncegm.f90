@@ -58,18 +58,18 @@ module ncegm
 
 
     type ncegm_model
-        procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null()                ! REQUIRED: return function F and first derivative with respect to c Fc
-        procedure(ReturnFunction), pointer, nopass                   :: d2F=>null()                         ! OPTIONAL: second derivative of F with respect to c Fcc. In case the marginal inverse is provided, this is optional.
-        procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                      ! OPTIONAL: inverse of marginal return function Fc'
-        procedure(BudgetConstraint), pointer, nopass                 :: Lambda=>null()                      ! REQUIRED: budget constraint
-        procedure(BudgetConstraint), pointer, nopass                 :: dLambda=>null()                     ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
-        procedure(StateTransition), pointer, nopass                  :: Psi=>null()                         ! REQUIRED if s is used: Transition function from s_t to s{t+1}
-        real(dp), dimension(:,:,:), allocatable                      :: V_initial                           ! REQUIRED: initial guess of the value function
-        real(dp), dimension(:), allocatable                          :: a_grid,d_grid,&                     ! REQUIRED: grids for A, D
-                                                                        s_grid,z_grid                       ! REQUIRED if s or z, respectively, is used.
-        real(dp)                                                     :: beta=0                              ! REQUIRED: discount factor Beta in interval (0,1)
-        real(dp), dimension(:,:), allocatable                        :: z_transition                        ! REQUIRED if z is used: transition matrix for random variable z
-        logical                                                      :: state_independent_foc = .FALSE.     ! OPTIONAL: is the first-order condition independent of the state variable? If set to .TRUE., then some optimizations are performed.
+        procedure(ReturnFunction), pointer, nopass                   :: F=>null(),dF=>null()                  ! REQUIRED: return function F and first derivative with respect to c Fc
+        procedure(ReturnFunction), pointer, nopass                   :: d2F=>null()                           ! OPTIONAL: second derivative of F with respect to c Fcc. In case the marginal inverse is provided, this is optional.
+        procedure(ReturnFunctionMarginalInverse), pointer, nopass    :: dF_inv=>null()                        ! OPTIONAL: inverse of marginal return function Fc'
+        procedure(BudgetConstraint), pointer, nopass                 :: Lambda=>null()                        ! REQUIRED: budget constraint
+        procedure(BudgetConstraint), pointer, nopass                 :: dLambda=>null()                       ! OPTIONAL: derivative of budget constraint with respect to a (if present: slight increase in computation speed and accuracy
+        procedure(StateTransition), pointer, nopass                  :: Psi=>null()                           ! REQUIRED if s is used: Transition function from s_t to s{t+1}
+        real(dp), dimension(:,:,:), allocatable                      :: V_initial                             ! REQUIRED: initial guess of the value function
+        real(dp), dimension(:), allocatable                          :: a_grid,d_grid,&                       ! REQUIRED: grids for A, D
+                                                                        s_grid,z_grid                         ! REQUIRED if s or z, respectively, is used.
+        real(dp)                                                     :: beta=0                                ! REQUIRED: discount factor Beta in interval (0,1)
+        real(dp), dimension(:,:), allocatable                        :: z_transition                          ! REQUIRED if z is used: transition matrix for random variable z
+        logical                                                      :: state_independent_foc_and_f = .FALSE. ! OPTIONAL: are the first-order condition and F independent of the state variable? If set to .TRUE., then some optimizations are performed.
     end type ncegm_model
 
     ! *******************************************************************************************************
@@ -124,7 +124,7 @@ module ncegm
             if (.NOT. allocated(model%s_grid)) then
                 allocate(model%s_grid(1))
                 model%s_grid=0.0_dp
-                model%state_independent_foc = .TRUE.
+                model%state_independent_foc_and_f = .TRUE.
             end if
             if (.NOT. allocated(model%z_grid)) then
                 allocate(model%z_grid(1),model%z_transition(1,1))
@@ -247,7 +247,7 @@ module ncegm
                     do index_d=1,glen_d
                         d=model%d_grid(index_d)
                         ! In case the FOCs are state-independent, s' can be computed by Psi without knowing the current state s
-                        if (model%state_independent_foc) then
+                        if (model%state_independent_foc_and_f) then
                             if (associated(model%Psi)) then
                                 index_s_prime = model%Psi(NO_STATE,index_d,index_z)
                             else
@@ -260,7 +260,7 @@ module ncegm
                         do index_s=1,glen_s
                             s=model%s_grid(index_s)
                             ! The FOC depends on the state; therefore, it has to be evaluated for every state
-                            if (.NOT.model%state_independent_foc) then
+                            if (.NOT.model%state_independent_foc_and_f) then
                                 if (associated(model%Psi)) then
                                     index_s_prime = model%Psi(index_s,index_d,index_z)
                                 else

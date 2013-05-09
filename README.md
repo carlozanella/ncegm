@@ -56,7 +56,7 @@ An input model is specified by an instance of the derived type `ncegm_model`.
                                                                         s_grid,z_grid
         real(dp)                                                     :: beta=0
         real(dp), dimension(:,:), allocatable                        :: z_transition
-        logical                                                      :: state_independent_foc = .FALSE.
+        logical                                                      :: state_independent_foc_and_f = .FALSE.
     end type ncegm_model
 
 Note that there are 4 procedure interfaces, which are used by the model.
@@ -141,10 +141,10 @@ The following grids are required if s, z or both are used, respectively.
        sizes of the respective grids.
 
 ### Further parameters
-* state_independent_foc (boolean flag): if s is used by the model but the first-order conditions do not depend on
-       s, a significant speed up can be achieved by setting this flag to true. The first-order
-       conditions do not depend on s if neither dF(c,d,s,z) nor Psi(s,d,z) depend on s. An example
-       where this is the case is in Fella (2011)'s model, where s'=d.
+* state_independent_foc_and_f (boolean flag): if s is used by the model but the first-order conditions
+       and the return function F do not depend on s, a significant speed up can be achieved by setting
+       this flag to true. The first-order conditions do not depend on s if neither F(c,d,s,z) nor Psi(s,d,z)
+       depend on s. An example where this is the case is in Fella (2011)'s model, where s'=Psi(s,d,z)=d.
 
 ### Further options
 For further options, check out the documentation in the source code. ncegm_solve provides some additional configuration
