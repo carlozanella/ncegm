@@ -33,7 +33,7 @@ module demo_fella11
 
 
     ! *******************************************************************************************************
-    ! ** Nummerical parameters
+    ! ** Numerical parameters
     ! *******************************************************************************************************
     real (dp), parameter            :: min_a= 0.d0                          ! lower bound on assets
     real (dp), parameter            :: max_a= 25.d0                         ! upper bound on assets
