@@ -1,4 +1,5 @@
+R/raw
 bin/
-obj/
 ncegm.depend
 ncegm.layout
+obj/
