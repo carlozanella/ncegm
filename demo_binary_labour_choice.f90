@@ -13,7 +13,7 @@ module demo_binary_labour_choice
     ! *******************************************************************************************************
     ! ** Model parameters
     ! *******************************************************************************************************
-    real(dp), parameter                         :: tau    = 0.2435_dp
+    real(dp), parameter                         :: tau    = 3_dp
     real(dp), parameter                         :: delta  = 1.75_dp
     real(dp), parameter                         :: roa    = 1.05_dp
     real(dp), parameter                         :: w      = 3.0_dp
