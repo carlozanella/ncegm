@@ -23,9 +23,9 @@ module demo_binary_labour_choice
     ! *******************************************************************************************************
     ! ** Numerical parameters
     ! *******************************************************************************************************
-    integer, parameter                          :: glen_a = 400
+    integer, parameter                          :: glen_a = 500
     real(dp), parameter                         :: a_min  = 0
-    real(dp), parameter                         :: a_max  = 100
+    real(dp), parameter                         :: a_max  = 20
     integer, parameter                          :: glen_d = 2
 
 
