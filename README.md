@@ -5,9 +5,12 @@ What is it?
 -----------
 ncegm (non-concave EGM) is a software for solving non-concave dynamic
 programming models with one continuous and one discrete choice variable.
-The implementation is based on the algorithm by Fella (2011), which is a
+The implementation is based on the algorithm by Fella (2011)*, which is a
 generalization of the endogenous gridpoints method (EGM) by Caroll (2006)
-to non-concave problems.
+to non-concave problems. The software is an adaption of Fella (2011)'s own implementation that can be found [on his page] (http://webspace.qmul.ac.uk/gfella/research/research.html). In case you want to use this code, please also cite Fella (2011) as the author of the original implementation.
+
+\* Fella, G. (2011). A generalized endogenous grid method for non-concave problems. (Working Papers). Queen Mary, University of London, School of Economics
+and Finance. See [http://webspace.qmul.ac.uk/gfella/research/research.html](http://webspace.qmul.ac.uk/gfella/research/research.html) for his paper and code.
 
 Usage
 -----
@@ -232,3 +235,4 @@ Todo
 Licensing
 ---------
 See LICENSE.
+Please do not forget to cite Fella (2011) in case you want to use this code.

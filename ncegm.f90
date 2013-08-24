@@ -354,7 +354,8 @@ module ncegm
         ! *     - valuef_end: The value function for the endogenous gridpoints m and c
         ! *     - k: The number of endogenous gridpoints
         ! *
-        ! * Note: Code closely follows Fella (2011)
+        ! * Note: Code closely follows implementation of Fella (2011). A Generalized Endogenous Grid Method for Non-Smooth and Non-Concave Problems
+        ! * 	  (http://webspace.qmul.ac.uk/gfella/research/research.html)
         ! **
         subroutine egm_maximize(exp_valuef, exp_dvaluef, d, s, z, m_end, c_end, valuef_end, k)
             real(dp), dimension(glen_a), intent(in)            :: exp_valuef, exp_dvaluef
@@ -486,7 +487,8 @@ module ncegm
         ! *     - interpol_valuef: The interpolated value function (defined on grid_a, conditional on d)
         ! *     - interpol_conditional_policy_c: The interpolated policy function for c (conditional on d)
         ! *
-        ! * Note: Code closely follows Fella (2011)
+        ! * Note: Code closely follows implementation of Fella (2011). A Generalized Endogenous Grid Method for Non-Smooth and Non-Concave Problems
+        ! * 	  (http://webspace.qmul.ac.uk/gfella/research/research.html))
         ! **
         subroutine egm_interpolate(d,s,z,m_exo,m_end, c_end,valuef_end,interpol_valuef,interpol_conditional_policy_c)
             real(dp), dimension(:), intent(in)        :: m_end, c_end,valuef_end
